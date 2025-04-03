@@ -1,0 +1,299 @@
+---
+title: "lavaan-models-3"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r include = FALSE}
+library(lavaan)
+library(lavaanPlot)
+library(sjPlot)
+library(semPlot)
+library(semTools)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+
+
+# Source Functions -------------------------------------------------------------
+funs <- list.files(
+  here::here('code/functions'),
+  full.names = TRUE
+)
+lapply(funs, source)
+
+# Read data --------------------------------------------------------------------
+dfm <- readr::read_rds(here::here('data', 'data-one-and-one.rds'))
+```
+
+
+# Unrestricted model
+
+```{r}
+fit1 <- fit_full_model(dfm, 10000, 101)
+tbl1 <- model_table(
+  fit1, 
+  caption = "Full unrestrained model",
+  file.name = "model-1-unrestricted.docx"
+  )
+tbl1
+```
+
+# Fully restricted model
+
+```{r}
+fit2 <- fit_restricted_model(dfm, 10000, 101)
+tbl2 <- model_table(
+  fit2, 
+  caption = "Fully restrained model",
+  file.name = "model-2-fully-restricted.docx"
+  )
+tbl2
+```
+
+# Main model
+
+```{r}
+fit3 <- fit_model(dfm, 10000, 101)
+tbl3 <- model_table(
+  fit3, 
+  caption = "Partially restrained model",
+  file.name = "model-3-partially-restricted.docx"
+  )
+tbl3
+```
+
+### Figure
+
+```{r fig.height=6, fig.width=8}
+pl <- lavaanPlot(model = fit3, 
+           node_options = list(shape = "box", fontname = "Helvetica"), 
+           edge_options = list(color = "grey"), 
+           coefs = TRUE, sig = TRUE, covs = F, stars = "regress")
+
+save_png(pl, here::here('results/figures', 'model-3.png'))
+```
+
+
+# Hypothesen
+
+### H1
+
+H1a: secure attachment representations in both mothers and fathers would be 
+positively associated with their own sensitivity in parent-child interaction
+
+```{r}
+res_f <- boot_rho(
+  data = dfm,
+  x = 'V_Bindung',
+  y = 'V_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_m <- boot_rho(
+  data = dfm,
+  x = 'M_Bindung',
+  y = 'M_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'Father: ', res_f, '\n',
+    'Mother: ', res_m
+  )
+)
+```
+
+
+
+
+H1b: higher pre- and postnatal mentalizing ability in both mothers and fathers 
+would be positively associated with their own sensitivity in parent-child 
+interaction  
+
+Prenatal:
+```{r}
+res_f <- boot_rho(
+  data = dfm,
+  x = 'V_RF_AAI',
+  y = 'V_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_m <- boot_rho(
+  data = dfm,
+  x = 'M_RF_AAI',
+  y = 'M_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'Father: ', res_f, '\n',
+    'Mother: ', res_m
+  )
+)
+```
+
+
+Postnatal:
+```{r}
+res_f <- boot_rho(
+  data = dfm,
+  x = 'V_RF_PDI',
+  y = 'V_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_m <- boot_rho(
+  data = dfm,
+  x = 'M_RF_PDI',
+  y = 'M_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'Father: ', res_f, '\n',
+    'Mother: ', res_m
+  )
+)
+```
+
+### H2
+
+```{r}
+res_t1 <- boot_rho(
+  data = dfm,
+  x = 'V_RF_AAI',
+  y = 'M_RF_AAI',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_t2 <- boot_rho(
+  data = dfm,
+  x = 'M_RF_PDI',
+  y = 'V_RF_PDI',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'T1: ', res_t1, '\n',
+    'T2: ', res_t2
+  )
+)
+```
+
+H2b: one partners mentalizing ability at T1 would be associated with the other 
+partners mentalizing ability at T2
+
+```{r}
+res_fm <- boot_rho(
+  data = dfm,
+  x = 'V_RF_AAI',
+  y = 'M_RF_PDI',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_mf <- boot_rho(
+  data = dfm,
+  x = 'M_RF_AAI',
+  y = 'V_RF_PDI',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'Father T1 -> Mother T2: ', res_fm, '\n',
+    'Mother T1 -> Father T2: ', res_mf
+  )
+)
+```
+
+H2c: one partners mentalizing ability at T2 would be associated with the other 
+partners sensitivity at T2
+
+```{r}
+res_fm <- boot_rho(
+  data = dfm,
+  x = 'V_RF_PDI',
+  y = 'M_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+res_mf <- boot_rho(
+  data = dfm,
+  x = 'M_RF_PDI',
+  y = 'V_Sensitivity',
+  n = 10000,
+  method = 'pearson'
+)
+
+cat(
+  paste0(
+    'Father RF -> Mother SE: ', res_fm, '\n',
+    'Mother RF -> Father SE: ', res_mf
+  )
+)
+```
+
+### H3
+
+H3a: the association between one partners mentalizing ability and sensitivity 
+is partially mediated by the other partners mentalizing ability 
+
+```{r}
+m <- unlist(lapply(tbl3$body$content$content$data[38,], `[[`, i = 'txt'))
+f <- unlist(lapply(tbl3$body$content$content$data[37,], `[[`, i = 'txt'))
+
+cat(
+  paste0(
+    'Father -> Mother -> Father: beta=', f['beta'], 
+    ' b [95% CI]=', f['b [95% CI]'], ' p=', f['p'], '\n',
+    'Mother -> Father -> Mother: beta=', m['beta'], 
+    ' b [95% CI]=', m['b [95% CI]'], ' p=', m['p']
+  )
+)
+```
+
+```{r}
+f <- unlist(lapply(tbl3$body$content$content$data[37,], `[[`, i = 'txt'))
+m <- unlist(lapply(tbl3$body$content$content$data[38,], `[[`, i = 'txt'))
+
+cat(
+  paste0(
+    'Father -> Mother -> Father: beta=', f['beta'], 
+    ' b [95% CI]=', f['b [95% CI]'], ' p=', f['p'], '\n',
+    'Mother -> Father -> Mother: beta=', m['beta'], 
+    ' b [95% CI]=', m['b [95% CI]'], ' p=', m['p']
+  )
+)
+```
+
+# Add correlation matrix (with bootstrapping)
+
+```{r}
+cor_matrix(
+    data = dfm, 
+    nboot = 2000, 
+    seed = 101, 
+    file.name = 'correlation-matrix.docx'
+    )
+```
+
+
